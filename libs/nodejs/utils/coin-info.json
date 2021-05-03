@@ -1,0 +1,119 @@
+{
+    "BTC": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/btc.png"
+    },
+    "ETH": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/eth.png"
+    },
+    "BNB": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/bnb.png"
+    },
+    "ADA": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/ada.png"
+    },
+    "DOT": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/dot.png"
+    },
+    "XRP": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/xrp.png"
+    },
+    "UNI": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/uni.png"
+    },
+    "THETA": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/theta.png"
+    },
+    "LTC": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/ltc.png"
+    },
+    "LINK": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/link.png"
+    },
+    "XLM": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/stellar-xlm-logo.png"
+    },
+    "BCH": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/bitcoin-cash-bch-logo.png"
+    },
+    "FIL": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/filecoin-fil-logo.png"
+    },
+    "DOGE": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/dogecoin-doge-logo.png"
+    },
+    "TRX": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/tron-trx-logo.png"
+    },
+    "VET": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/vechain-vet-logo.png"
+    },
+    "WBTC": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/wrapped-bitcoin-wbtc-logo.png"
+    },
+    "SOL": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/solana-sol-logo.png"
+    },
+    "KLAY": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/CjbT82vP_400x400.png"
+    },
+    "EOS": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/eos-eos-logo.png"
+    },
+    "LUNA": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/terra-luna-luna-logo.png"
+    },
+    "BTT": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/bittorrent-btt-logo.png"
+    },
+    "IOTA": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/iota-miota-logo.png"
+    },
+    "XMR": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/monero-xmr-logo.png"
+    },
+    "CRO": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/cro.png"
+    },
+    "BSV": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/bitcoin-sv-bsv-logo.png"
+    },
+    "XTZ": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/tezos-xtz-logo.png"
+    },
+    "FTT": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/ftx-token-ftt-logo.png"
+    },
+    "AAVE": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/aave-aave-logo.png"
+    },
+    "ATOM": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/cosmos-atom-logo.png"
+    },
+    "NEO": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/neo-neo-logo.png"
+    },
+    "AVAX": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/avalanche-avax-logo.png"
+    },
+    "XEM": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/nem-xem-logo.png"
+    },
+    "EGLD": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/elrond-egld-egld-logo.png"
+    },
+    "ALGO": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/algorand-algo-logo.png"
+    },
+    "CAKE": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/pancakeswap-cake-logo.png"
+    },
+    "KSM": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/kusama-ksm-logo.png"
+    },
+    "HOT": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/holo-hot-logo.png"
+    },
+    "HT": {
+        "thumbnail": "https://cct-static-public.s3-ap-southeast-1.amazonaws.com/logo/huobi-token-ht-logo.png}"
+    }
+}

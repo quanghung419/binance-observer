@@ -1,0 +1,535 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Simple application which observe Binance metric and notify to Telegram channel when threshold cross.
+
+Globals:
+  Function:
+    Runtime: nodejs12.x
+    Timeout: 900
+
+Parameters:
+  TelegramBotToken:
+    Type: String
+    Description: "Telegram bot token"
+    Default: ""
+  TelegramChart15mChannelId:
+    Type: String
+    Description: "Telegram channel id (to notify alarm of top 10 trend both up & down)"
+    Default: ""
+  TelegramBtcTrendChannelId:
+    Type: String
+    Description: "Telegram channel id (to notify alarm of BTC trend both up & down)"
+    Default: ""
+  TelegramVolumeChannelId:
+    Type: String
+    Description: "Telegram channel id (to notify alarm of Volume)"
+    Default: ""
+  TelegramPriceUpChannelId:
+    Type: String
+    Description: "Telegram channel id (to notify alarm of Price - GO UP)"
+    Default: ""
+  TelegramPriceDownChannelId:
+    Type: String
+    Description: "Telegram channel id (to notify alarm of Price - GO DOWN)"
+    Default: ""
+  CoinmaketcapApiKey:
+    Type: String
+    Description: "Coinmarketcap API key"
+    Default: ""
+  TopRank:
+    Type: Number
+    Description: "Top rank watch list"
+    Default: 200
+
+Resources:
+############################################ COMMON RESOURCES ############################################
+
+  libs:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: libs
+      Description: Lambda layer dependencies
+      ContentUri: libs/.
+      CompatibleRuntimes:
+        - nodejs12.x
+  
+  BinanceObserveApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Auth:
+        ApiKeyRequired: true
+        UsagePlan:
+          CreateUsagePlan: PER_API
+          Description: Personal plan usage
+          Quota:
+            Limit: 10000
+            Period: MONTH
+          Throttle:
+            BurstLimit: 20
+            RateLimit: 10
+
+
+############################################ LAMBDA FUNCTION ############################################
+
+  FunctionObserveBinanceVpaChart15m:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Observe Binance VPA on chart 15m
+      CodeUri: functions/observe-binance-vpa-chart15m/
+      Handler: index.handler
+      Runtime: nodejs12.x
+      Timeout: 900
+      MemorySize: 256
+      Layers:
+        - !Ref libs
+      Environment:
+        Variables:
+          LATEST_NOTIFY_TELEGRAM_TABLE: !Ref LatestNotifyTelegramTable
+          # LATEST_NOTIFY_TIME_TABLE: !Ref LatestNotifyTimeTable
+          BOT_TOKEN: !Ref TelegramBotToken
+          # VOLUME_CHANNEL_ID: !Ref TelegramVolumeChannelId
+          PRICE_UP_CHANNEL_ID: !Ref TelegramChart15mChannelId
+          PRICE_DOWN_CHANNEL_ID: !Ref TelegramChart15mChannelId
+          # BTC_TREND_CHANNEL_ID: !Ref TelegramBtcTrendChannelId
+          VOLUME_STATE_TABLE: !Ref VolumeStateTable
+          WATCH_LIST_TABLE: !Ref WatchListTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref WatchListTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VolumeStateTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LatestNotifyTelegramTable
+        - SQSPollerPolicy:
+            QueueName: !GetAtt SqsVpaChart15mTrackingRequest.QueueName
+        - AWSLambdaBasicExecutionRole
+      Events:
+        HttpPost:
+          Type: Api
+          Properties:
+            RestApiId: !Ref BinanceObserveApiGateway
+            Path: '/FunctionObserveBinanceVpaChart15m'
+            Method: post
+            Auth:
+              ApiKeyRequired: true
+
+  FunctionObserveBinanceVolume:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Observe Binance volume
+      CodeUri: functions/observe-binance-volume/
+      Handler: index.handler
+      Runtime: nodejs12.x
+      Timeout: 900
+      MemorySize: 256
+      Layers:
+        - !Ref libs
+      Environment:
+        Variables:
+          LATEST_NOTIFY_TELEGRAM_TABLE: !Ref LatestNotifyTelegramTable
+          # LATEST_NOTIFY_TIME_TABLE: !Ref LatestNotifyTimeTable
+          BOT_TOKEN: !Ref TelegramBotToken
+          VOLUME_CHANNEL_ID: !Ref TelegramVolumeChannelId
+          PRICE_UP_CHANNEL_ID: !Ref TelegramPriceUpChannelId
+          PRICE_DOWN_CHANNEL_ID: !Ref TelegramPriceDownChannelId
+          BTC_TREND_CHANNEL_ID: !Ref TelegramBtcTrendChannelId
+          VOLUME_STATE_TABLE: !Ref VolumeStateTable
+          WATCH_LIST_TABLE: !Ref WatchListTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref WatchListTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VolumeStateTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LatestNotifyTelegramTable
+        - SQSPollerPolicy:
+            QueueName: !GetAtt SqsVolumeTrackingRequest.QueueName
+        - AWSLambdaBasicExecutionRole
+      Events:
+        HttpPost:
+          Type: Api
+          Properties:
+            RestApiId: !Ref BinanceObserveApiGateway
+            Path: '/ObserveBinanceVolume'
+            Method: post
+            Auth:
+              ApiKeyRequired: true
+
+  InitVolumeTrackingRequest:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Init volume tracking request
+      CodeUri: functions/init-tracking-volume-request/
+      Handler: index.handler
+      Runtime: nodejs12.x
+      Timeout: 900
+      MemorySize: 256
+      Layers:
+        - !Ref libs
+      Environment:
+        Variables:
+          SQS_VOLUME_TRACKING_REQUEST_QUEUE_URL: !Ref SqsVolumeTrackingRequest
+          SQS_VPA_CHART15M_TRACKING_REQUEST_QUEUE_URL: !Ref SqsVpaChart15mTrackingRequest
+          WATCH_LIST_TABLE: !Ref WatchListTable
+          TOP_RANK: !Ref TopRank
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt SqsVolumeTrackingRequest.QueueName
+        - DynamoDBReadPolicy:
+            TableName: !Ref WatchListTable
+        - AWSLambdaBasicExecutionRole
+      Events:
+        HttpPost:
+          Type: Api
+          Properties:
+            RestApiId: !Ref BinanceObserveApiGateway
+            Path: '/InitVolumeTrackingRequest'
+            Method: post
+            Auth:
+              ApiKeyRequired: true
+
+  InitVpa15mTrackingRequest:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Init VPA chart 15m tracking request
+      CodeUri: functions/init-tracking-vpa-15m-request/
+      Handler: index.handler
+      Runtime: nodejs12.x
+      Timeout: 900
+      MemorySize: 256
+      Layers:
+        - !Ref libs
+      Environment:
+        Variables:
+          SQS_VPA_CHART15M_TRACKING_REQUEST_QUEUE_URL: !Ref SqsVpaChart15mTrackingRequest
+          WATCH_LIST_TABLE: !Ref WatchListTable
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt SqsVpaChart15mTrackingRequest.QueueName
+        - DynamoDBReadPolicy:
+            TableName: !Ref WatchListTable
+        - AWSLambdaBasicExecutionRole
+      Events:
+        HttpPost:
+          Type: Api
+          Properties:
+            RestApiId: !Ref BinanceObserveApiGateway
+            Path: '/InitVpa15mTrackingRequest'
+            Method: post
+            Auth:
+              ApiKeyRequired: true
+
+  GetLatestVolumeState:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Get latest volume status
+      CodeUri: functions/get-latest-volume-state/
+      Handler: index.handler
+      Runtime: nodejs12.x
+      Timeout: 900
+      MemorySize: 256
+      Layers:
+        - !Ref libs
+      Environment:
+        Variables:
+          VOLUME_STATE_TABLE: !Ref VolumeStateTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref VolumeStateTable
+      Events:
+        HttpPost:
+          Type: Api
+          Properties:
+            RestApiId: !Ref BinanceObserveApiGateway
+            Path: '/GetLatestVolumeState'
+            Method: post
+            Auth:
+              ApiKeyRequired: true
+
+  FetchCoinsFromCoinmaketcap:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: fetch coins from Coinmaketcap
+      CodeUri: functions/fetch-coins-from-coinmaketcap/
+      Handler: index.handler
+      Runtime: nodejs12.x
+      Timeout: 900
+      MemorySize: 256
+      Layers:
+        - !Ref libs
+      Environment:
+        Variables:
+          COINMAKETCAP_API_KEY: !Ref CoinmaketcapApiKey
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CoinInfoTable
+      Events:
+        HttpPost:
+          Type: Api
+          Properties:
+            RestApiId: !Ref BinanceObserveApiGateway
+            Path: '/FetchCoinsFromCoinmaketcap'
+            Method: post
+            Auth:
+              ApiKeyRequired: true
+
+  SyncWatchList:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Sync watch list from google-sheet to dynamodb table
+      CodeUri: functions/sync-watch-list/
+      Handler: index.handler
+      Runtime: nodejs12.x
+      Timeout: 900
+      MemorySize: 256
+      Layers:
+        - !Ref libs
+      Environment:
+        Variables:
+          WATCH_LIST_TABLE: !Ref WatchListTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WatchListTable
+        - AWSLambdaBasicExecutionRole
+      Events:
+        HttpPost:
+          Type: Api
+          Properties:
+            RestApiId: !Ref BinanceObserveApiGateway
+            Path: '/SyncWatchList'
+            Method: post
+            Auth:
+              ApiKeyRequired: true
+  
+  FunctionUpdateCoinRank:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Sync coin rank from Coinmarketcap
+      CodeUri: functions/update-coin-rank/
+      Handler: index.handler
+      Runtime: nodejs12.x
+      Timeout: 900
+      MemorySize: 256
+      Layers:
+        - !Ref libs
+      Environment:
+        Variables:
+          WATCH_LIST_TABLE: !Ref WatchListTable
+          COINMAKETCAP_API_KEY: !Ref CoinmaketcapApiKey
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WatchListTable
+        - AWSLambdaBasicExecutionRole
+      Events:
+        HttpPost:
+          Type: Api
+          Properties:
+            RestApiId: !Ref BinanceObserveApiGateway
+            Path: '/UpdateCoinRank'
+            Method: post
+            Auth:
+              ApiKeyRequired: true
+
+############################################ DYNAMO TABLE ############################################
+  VolumeStateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-VolumeStateTable
+      AttributeDefinitions:
+        - AttributeName: symbol
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema: #required
+        - AttributeName: symbol
+          KeyType: HASH
+
+  CoinInfoTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-CoinInfoTable
+      AttributeDefinitions:
+        - AttributeName: key
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema: #required
+        - AttributeName: key
+          KeyType: HASH
+
+  # LatestNotifyTimeTable:
+  #   Type: AWS::DynamoDB::Table
+  #   Properties:
+  #     TableName: !Sub ${AWS::StackName}-LatestNotifyTimeTable
+  #     AttributeDefinitions:
+  #       - AttributeName: symbol
+  #         AttributeType: S
+  #       - AttributeName: chart
+  #         AttributeType: S
+  #     BillingMode: PAY_PER_REQUEST
+  #     KeySchema: #required
+  #       - AttributeName: symbol
+  #         KeyType: HASH
+  #       - AttributeName: chart
+  #         KeyType: RANGE
+
+  LatestNotifyTelegramTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-LatestNotifyTelegramTable
+      AttributeDefinitions:
+        - AttributeName: symbol
+          AttributeType: S
+        - AttributeName: subKey
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema: #required
+        - AttributeName: symbol
+          KeyType: HASH
+        - AttributeName: subKey
+          KeyType: RANGE
+  
+  WatchListTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-WatchListTable
+      AttributeDefinitions:
+        - AttributeName: coinKey
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema: #required
+        - AttributeName: coinKey
+          KeyType: HASH
+
+############################################ EVENT RULE ############################################
+  EventRuleInitVpaChart15mTrackingRequest:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Scheduled rule observe Binance VPA chart 15m top 10
+      Name: !Sub ${AWS::StackName}-EventRuleInitVpaChart15mTrackingRequest
+      ScheduleExpression: "rate(1 minute)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt InitVpa15mTrackingRequest.Arn
+          Id: "Default"
+          Input: '{"body": "{}"}'
+
+  LambdaInvokePermissionEventRuleInitVpaChart15mTrackingRequest:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref InitVpa15mTrackingRequest
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EventRuleInitVpaChart15mTrackingRequest.Arn
+
+  EventRuleInitVolumeTrackingRequest:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Scheduled rule observe Binance volume metric of specify pair
+      Name: !Sub ${AWS::StackName}-InitVolumeTrackingRequestEventRule
+      ScheduleExpression: "rate(1 minute)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt InitVolumeTrackingRequest.Arn
+          Id: "Default"
+          Input: '{"body": "{}"}'
+
+  LambdaInvokePermissionInitVolumeTrackingRequest:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref InitVolumeTrackingRequest
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EventRuleInitVolumeTrackingRequest.Arn
+
+  EventRuleUpdateCoinRank:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Scheduled rule update coin rank
+      Name: !Sub ${AWS::StackName}-UpdateCoinRankEventRule
+      ScheduleExpression: "rate(15 minutes)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt FunctionUpdateCoinRank.Arn
+          Id: "Default"
+          Input: '{"body": "{}"}'
+
+  LambdaInvokePermissionUpdateCoinRank:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref FunctionUpdateCoinRank
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EventRuleUpdateCoinRank.Arn
+
+############################################ LOG GROUP ############################################
+  LogsLogGroupObserveBinanceVpaChart15m:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${FunctionObserveBinanceVpaChart15m}"
+      RetentionInDays: 1
+
+  LogsLogGroupObserveBinanceVolume:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${FunctionObserveBinanceVolume}"
+      RetentionInDays: 1
+
+  LogsLogGroupUpdateCoinRank:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${FunctionUpdateCoinRank}"
+      RetentionInDays: 1
+
+  LogsLogGroupInitVolumeTrackingRequest:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${InitVolumeTrackingRequest}"
+      RetentionInDays: 1
+
+  LogsLogGroupInitVpa15mTrackingRequest:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${InitVpa15mTrackingRequest}"
+      RetentionInDays: 1
+
+  LogsLogGroupSyncWatchList:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${SyncWatchList}"
+      RetentionInDays: 1
+
+############################################ SQS ############################################
+  SqsVpaChart15mTrackingRequest:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MessageRetentionPeriod: 345600 # Default value: 345,600 seconds = 4 days
+      QueueName: SqsVpaChart15mTrackingRequest
+      ReceiveMessageWaitTimeSeconds: 20
+      VisibilityTimeout: 900
+
+  FunctionObserveBinanceVpaChart15mEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 10
+      Enabled: true
+      EventSourceArn: !GetAtt SqsVpaChart15mTrackingRequest.Arn
+      FunctionName: !GetAtt FunctionObserveBinanceVpaChart15m.Arn
+
+  SqsVolumeTrackingRequest:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MessageRetentionPeriod: 345600 # Default value: 345,600 seconds = 4 days
+      QueueName: SqsVolumeTrackingRequest
+      ReceiveMessageWaitTimeSeconds: 20
+      VisibilityTimeout: 900
+
+  FunctionObserveBinanceVolumeEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 10
+      Enabled: true
+      EventSourceArn: !GetAtt SqsVolumeTrackingRequest.Arn
+      FunctionName: !GetAtt FunctionObserveBinanceVolume.Arn
